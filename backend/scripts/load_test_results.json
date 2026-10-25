@@ -1,0 +1,62 @@
+{
+  "hardware": {
+    "cpu": "AMD Ryzen 7 260 w/ Radeon 780M (8 Cores, 16 Logical Processors)",
+    "ram_gb": 24,
+    "os": "Windows 11 (Build 10.0.26200)",
+    "python_version": "3.14.3"
+  },
+  "results": [
+    {
+      "endpoint_benchmark": "Login (Argon2id Password Verification)",
+      "iterations": 40,
+      "total_time_seconds": 2.3495,
+      "throughput_req_per_sec": 17.03,
+      "p50_latency_ms": 56.87,
+      "p95_latency_ms": 77.93,
+      "p99_latency_ms": 86.46,
+      "mean_latency_ms": 58.74,
+      "min_latency_ms": 54.63,
+      "max_latency_ms": 86.46,
+      "success_rate_percent": 100.0
+    },
+    {
+      "endpoint_benchmark": "Student Published Timetable Read",
+      "iterations": 100,
+      "total_time_seconds": 1.1234,
+      "throughput_req_per_sec": 89.01,
+      "p50_latency_ms": 10.64,
+      "p95_latency_ms": 13.12,
+      "p99_latency_ms": 46.4,
+      "mean_latency_ms": 11.23,
+      "min_latency_ms": 8.98,
+      "max_latency_ms": 46.4,
+      "success_rate_percent": 100.0
+    },
+    {
+      "endpoint_benchmark": "Job Submission to Durable Queue",
+      "iterations": 60,
+      "total_time_seconds": 0.6123,
+      "throughput_req_per_sec": 98.0,
+      "p50_latency_ms": 10.05,
+      "p95_latency_ms": 13.15,
+      "p99_latency_ms": 13.79,
+      "mean_latency_ms": 10.2,
+      "min_latency_ms": 8.82,
+      "max_latency_ms": 13.79,
+      "success_rate_percent": 100.0
+    },
+    {
+      "endpoint_benchmark": "Pre-Publication Verification & Diff Review",
+      "iterations": 40,
+      "total_time_seconds": 0.4043,
+      "throughput_req_per_sec": 98.93,
+      "p50_latency_ms": 9.96,
+      "p95_latency_ms": 12.06,
+      "p99_latency_ms": 12.57,
+      "mean_latency_ms": 10.11,
+      "min_latency_ms": 9.03,
+      "max_latency_ms": 12.57,
+      "success_rate_percent": 100.0
+    }
+  ]
+}

@@ -1,0 +1,174 @@
+﻿version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: scheduler_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-scheduler}
+      POSTGRES_USER: ${POSTGRES_USER:-scheduler_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-scheduler_password}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-scheduler_user} -d ${POSTGRES_DB:-scheduler}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: '1.5'
+          memory: 1024M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    stop_grace_period: 20s
+    networks:
+      - scheduler_internal
+
+  migration:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.backend
+    container_name: scheduler_migration
+    profiles: ["migration"]
+    restart: "no"
+    user: "1000:1000"
+    command: ["python", "-m", "alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://scheduler_user:scheduler_password@db:5432/scheduler}
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-secret-key-replace-in-production-scheduling-system}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - scheduler_internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.backend
+    container_name: scheduler_backend
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--timeout-graceful-shutdown", "25"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://scheduler_user:scheduler_password@db:5432/scheduler}
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-secret-key-replace-in-production-scheduling-system}
+      API_V1_STR: /api/v1
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    volumes:
+      - storage_data:/app/storage
+      - logs_data:/app/logs
+      - exports_data:/app/exports
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1536M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    stop_grace_period: 30s
+    networks:
+      - scheduler_internal
+
+  worker:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.backend
+    container_name: scheduler_worker
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["python", "-m", "app.worker"]
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://scheduler_user:scheduler_password@db:5432/scheduler}
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-secret-key-replace-in-production-scheduling-system}
+      API_V1_STR: /api/v1
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - storage_data:/app/storage
+      - logs_data:/app/logs
+      - exports_data:/app/exports
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2048M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    stop_grace_period: 45s
+    networks:
+      - scheduler_internal
+
+  frontend:
+    build:
+      context: .
+      dockerfile: deployment/Dockerfile.frontend
+    container_name: scheduler_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+    stop_grace_period: 10s
+    networks:
+      - scheduler_internal
+
+  proxy:
+    image: nginx:alpine
+    container_name: scheduler_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./deployment/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    stop_grace_period: 15s
+    networks:
+      - scheduler_internal
+
+volumes:
+  postgres_data:
+    name: scheduler_postgres_data
+  storage_data:
+    name: scheduler_storage_data
+  logs_data:
+    name: scheduler_logs_data
+  exports_data:
+    name: scheduler_exports_data
+
+networks:
+  scheduler_internal:
+    name: scheduler_internal_net
+    driver: bridge

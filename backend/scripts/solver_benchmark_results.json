@@ -1,0 +1,74 @@
+{
+  "hardware": {
+    "cpu": "AMD Ryzen 7 260 w/ Radeon 780M (8 Cores, 16 Logical Processors)",
+    "ram_gb": 24,
+    "os": "Windows 11 (Build 10.0.26200)",
+    "python_version": "3.14.3"
+  },
+  "results": [
+    {
+      "benchmark_name": "Small Instance (12 Sessions)",
+      "num_sessions": 12,
+      "num_teachers": 4,
+      "num_rooms": 4,
+      "total_slots": 30,
+      "status": "OPTIMAL",
+      "wall_time_seconds": 0.2218,
+      "solver_reported_runtime": 0.122,
+      "objective_value": 0.0,
+      "best_bound": 0.0,
+      "assigned_count": 12,
+      "peak_memory_mb": 0.37,
+      "independent_checker_valid": true,
+      "checker_violations_count": 0
+    },
+    {
+      "benchmark_name": "Medium Instance (36 Sessions)",
+      "num_sessions": 36,
+      "num_teachers": 10,
+      "num_rooms": 8,
+      "total_slots": 35,
+      "status": "OPTIMAL",
+      "wall_time_seconds": 2.7318,
+      "solver_reported_runtime": 1.95,
+      "objective_value": 0.0,
+      "best_bound": 0.0,
+      "assigned_count": 36,
+      "peak_memory_mb": 2.16,
+      "independent_checker_valid": true,
+      "checker_violations_count": 0
+    },
+    {
+      "benchmark_name": "Large Instance (80 Sessions)",
+      "num_sessions": 80,
+      "num_teachers": 20,
+      "num_rooms": 15,
+      "total_slots": 40,
+      "status": "OPTIMAL",
+      "wall_time_seconds": 11.9743,
+      "solver_reported_runtime": 6.716,
+      "objective_value": 0.0,
+      "best_bound": 0.0,
+      "assigned_count": 80,
+      "peak_memory_mb": 10.61,
+      "independent_checker_valid": true,
+      "checker_violations_count": 0
+    },
+    {
+      "benchmark_name": "Infeasible Boundary (Pigeonhole Violation)",
+      "num_sessions": 10,
+      "num_teachers": 1,
+      "num_rooms": 5,
+      "total_slots": 4,
+      "status": "MODEL_INVALID",
+      "wall_time_seconds": 0.0001,
+      "solver_reported_runtime": 0.0,
+      "objective_value": null,
+      "best_bound": null,
+      "assigned_count": 0,
+      "peak_memory_mb": 0.0,
+      "independent_checker_valid": false,
+      "checker_violations_count": 10
+    }
+  ]
+}
