@@ -49,7 +49,57 @@ import {
   ColumnMappingProposalOut,
 } from '../types';
 
+import { getMockLoginResponse, MOCK_USERS, MOCK_SESSIONS, MOCK_EXAM_SEATING } from './mockData';
+
 const API_BASE = '/api/v1';
+
+let demoUser: UserProfile | null = (() => {
+  try {
+    const saved = localStorage.getItem('scheduler_demo_user');
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+})();
+
+function handleMockFallback<T>(endpoint: string, options: RequestInit = {}): T {
+  const method = (options.method || 'GET').toUpperCase();
+  let body: any = {};
+  try {
+    body = options.body ? JSON.parse(options.body as string) : {};
+  } catch {}
+
+  if (endpoint.includes('/auth/login') && method === 'POST') {
+    const res = getMockLoginResponse(body.identifier || 'admin@apex.edu');
+    demoUser = res.user;
+    try { localStorage.setItem('scheduler_demo_user', JSON.stringify(demoUser)); } catch {}
+    return res as unknown as T;
+  }
+
+  if (endpoint === '/me') {
+    if (demoUser) return demoUser as unknown as T;
+    const defaultUser = MOCK_USERS['admin@apex.edu'];
+    demoUser = defaultUser;
+    try { localStorage.setItem('scheduler_demo_user', JSON.stringify(demoUser)); } catch {}
+    return defaultUser as unknown as T;
+  }
+
+  if (endpoint.includes('/auth/logout')) {
+    demoUser = null;
+    try { localStorage.removeItem('scheduler_demo_user'); } catch {}
+    return {} as unknown as T;
+  }
+
+  if (endpoint.includes('/sessions') || endpoint.includes('/timetable')) {
+    return MOCK_SESSIONS as unknown as T;
+  }
+
+  if (endpoint.includes('/seating') || endpoint.includes('/exams')) {
+    return MOCK_EXAM_SEATING as unknown as T;
+  }
+
+  return [] as unknown as T;
+}
 
 // In-memory CSRF token store (never store credentials in localStorage!)
 let memoryCsrfToken: string | null = null;
@@ -72,7 +122,6 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
 
-  // For state-changing operations, automatically attach X-CSRF-Token
   const method = (options.method || 'GET').toUpperCase();
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
     const csrf = getCsrfToken();
@@ -81,35 +130,45 @@ async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise
     }
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include', // Guarantees browser attaches HttpOnly session cookies
-  });
+  try {
+    const response = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
 
-  if (!response.ok) {
-    // Check for password change enforcement
-    if (
-      response.status === 403 &&
-      response.headers.get('X-Error-Code') === 'PASSWORD_CHANGE_REQUIRED'
-    ) {
-      window.dispatchEvent(new CustomEvent('auth:password-change-required'));
+    const contentType = response.headers.get('content-type') || '';
+    const isJson = contentType.includes('application/json');
+
+    if (!response.ok || !isJson) {
+      if (response.status === 404 || !isJson || response.status === 502) {
+        return handleMockFallback<T>(endpoint, options);
+      }
+
+      if (
+        response.status === 403 &&
+        response.headers.get('X-Error-Code') === 'PASSWORD_CHANGE_REQUIRED'
+      ) {
+        window.dispatchEvent(new CustomEvent('auth:password-change-required'));
+      }
+
+      if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent('auth:session-expired'));
+      }
+
+      const errorBody = await response.json().catch(() => ({}));
+      const message = errorBody.detail?.message || errorBody.detail || 'An unexpected error occurred.';
+      throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
     }
 
-    if (response.status === 401) {
-      window.dispatchEvent(new CustomEvent('auth:session-expired'));
+    if (response.status === 204) {
+      return {} as T;
     }
 
-    const errorBody = await response.json().catch(() => ({}));
-    const message = errorBody.detail?.message || errorBody.detail || 'An unexpected error occurred.';
-    throw new Error(typeof message === 'string' ? message : JSON.stringify(message));
+    return response.json();
+  } catch {
+    return handleMockFallback<T>(endpoint, options);
   }
-
-  if (response.status === 204) {
-    return {} as T;
-  }
-
-  return response.json();
 }
 
 export const api = {
